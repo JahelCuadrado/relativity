@@ -1,0 +1,52 @@
+// Dev-only: ./gradlew runClientGameTestSodium runs the client GameTests again with Sodium loaded
+// (item_frame_extract_cache must stay pixel-identical with it; item_frame_cache is off with it).
+// Sodium is a test runtime only: never compiled against, packaged or required. Pinned to the
+// benchmark pack's version (PackMod). To drop it, delete this file and its `apply from` line.
+
+repositories {
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'Modrinth'
+				url = 'https://api.modrinth.com/maven'
+			}
+		}
+		filter { includeGroup 'maven.modrinth' }
+	}
+}
+
+def sodiumArtifact = "maven.modrinth:sodium:${project.sodium_version}"
+
+configurations {
+	sodiumGameTestRuntime {
+		canBeConsumed = false
+		transitive = false
+	}
+}
+
+dependencies {
+	sodiumGameTestRuntime sodiumArtifact
+}
+
+loom {
+	runs {
+		clientGameTestSodium {
+			inherit clientGameTest
+			configName = "Client GameTest (Sodium)"
+			ideConfigGenerated = false
+			runDir = "build/run/clientGameTestSodium"
+		}
+	}
+}
+
+tasks.named("runClientGameTestSodium") {
+	def runDirectory = file("build/run/clientGameTestSodium")
+	def sodiumJar = configurations.sodiumGameTestRuntime
+	inputs.files(sodiumJar)
+	doFirst {
+		runDirectory.deleteDir()
+		runDirectory.mkdirs()
+		new File(runDirectory, "options.txt").text = "soundCategory_master:0.0\nmaxFps:30\nrenderDistance:2\n"
+		systemProperty "fabric.addMods", sodiumJar.singleFile.absolutePath
+	}
+}

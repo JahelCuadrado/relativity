@@ -1,0 +1,38 @@
+{
+  "required": true,
+  "package": "com.einsteinmods.relativity.client.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "BlockStateModelWrapperAccessor",
+    "BufferBuilderMixin",
+    "ByteBufferBuilderAccessor",
+    "CompositeModelAccessor",
+    "CuboidItemModelWrapperAccessor",
+    "DirectoryLockMixin",
+    "EntityRendererMixin",
+    "ExtendedBlockModelFeatureRendererMixin",
+    "ItemFeatureRendererMixin",
+    "ItemFrameExtractMixin",
+    "ItemFrameMixin",
+    "ItemFrameRendererMixin",
+    "LevelExtractorMixin",
+    "LevelRendererMixin",
+    "LevelStorageSourceMixin",
+    "MeshViewImplAccessor",
+    "MinecraftAccessor",
+    "MinecraftMixin",
+    "MinecraftServerAccessor",
+    "MinecraftServerMixin",
+    "PoseAccessor",
+    "PoseCopyMixin",
+    "RangeSelectItemModelAccessor",
+    "RenderTypeFeatureRendererMixin",
+    "SelectItemModelAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

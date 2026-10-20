@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "id": "relativity",
+  "version": "${version}",
+  "name": "Relativity",
+  "description": "Makes Minecraft faster where no other mod does.",
+  "authors": [
+    "Jahel Cuadrado"
+  ],
+  "contact": {
+    "sources": "https://github.com/JahelCuadrado/relativity",
+    "issues": "https://github.com/JahelCuadrado/relativity/issues"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.einsteinmods.relativity.Relativity"
+    ],
+    "modmenu": [
+      "com.einsteinmods.relativity.client.config.ModMenuIntegration"
+    ]
+  },
+  "mixins": [
+    "relativity.mixins.json",
+    {
+      "config": "relativity.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  },
+  "recommends": {
+    "modmenu": "*"
+  }
+}

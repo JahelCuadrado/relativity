@@ -1,0 +1,19 @@
+{
+  "config.relativity.title": "Relativity",
+  "config.relativity.category.general": "General",
+  "config.relativity.option.instant_world_exit": "Instant World Exit",
+  "config.relativity.option.instant_world_exit.description": "Return to the menu instantly when leaving a world; it keeps saving in the background.",
+  "config.relativity.option.item_frame_cache": "Faster Item Frames",
+  "config.relativity.option.item_frame_cache.description": "Item frames that don't change cost almost nothing to draw.",
+  "config.relativity.option.item_frame_extract_cache": "Faster Item Frame Updates",
+  "config.relativity.option.item_frame_extract_cache.description": "Item frames that don't change skip most of their per-frame preparation.",
+  "config.relativity.empty": "No optimizations yet",
+  "config.relativity.restart_required": "Restart the game to apply the changes.",
+  "config.relativity.save": "Save Changes",
+  "config.relativity.save.tooltip": "Makes the changes permanent.",
+  "config.relativity.done.tooltip": "Closes the settings.",
+  "config.relativity.cancel.tooltip": "Forgets pending changes and closes the settings.",
+  "config.relativity.reset.tooltip": "Resets all options to default. (This can be undone!)",
+  "config.relativity.undo": "Undo",
+  "config.relativity.undo.tooltip": "Reverts all options to what they were before editing."
+}

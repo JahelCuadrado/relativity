@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "relativity-benchmark",
+  "version": "1.0.0",
+  "name": "Relativity Benchmark",
+  "description": "Dev-only reference benchmark. Never packaged in the published jar.",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.einsteinmods.relativity.benchmark.BenchmarkClient"
+    ]
+  },
+  "mixins": [
+    "relativity-benchmark.mixins.json"
+  ],
+  "depends": {
+    "relativity": "*",
+    "fabric-api": "*"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "required": true,
+  "package": "com.einsteinmods.relativity.benchmark.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "BlockRandomTickProbeMixin",
+    "BrainProbeMixin",
+    "ChunkGeneratorProbeMixin",
+    "FluidStateProbeMixin",
+    "HopperProbeMixin",
+    "NoiseGeneratorProbeMixin",
+    "PathFinderProbeMixin",
+    "PathNavigationProbeMixin",
+    "ServerLevelProbeMixin"
+  ],
+  "client": [
+    "EntityRenderDispatcherProbeMixin",
+    "FrameCacheProbeMixin",
+    "GameLoadTimesProbeMixin",
+    "ItemFrameSubmitProbeMixin",
+    "KeyboardInputMixin",
+    "LevelExtractorProbeMixin",
+    "MinecraftFrameMixin",
+    "MouseInputMixin",
+    "RenderStageProbeMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

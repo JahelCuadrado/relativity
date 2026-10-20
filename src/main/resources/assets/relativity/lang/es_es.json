@@ -1,0 +1,19 @@
+{
+  "config.relativity.title": "Relativity",
+  "config.relativity.category.general": "General",
+  "config.relativity.option.instant_world_exit": "Salida instantánea del mundo",
+  "config.relativity.option.instant_world_exit.description": "Vuelve al menú al instante al salir de un mundo; se sigue guardando en segundo plano.",
+  "config.relativity.option.item_frame_cache": "Marcos más rápidos",
+  "config.relativity.option.item_frame_cache.description": "Los marcos que no cambian casi no cuestan nada de dibujar.",
+  "config.relativity.option.item_frame_extract_cache": "Preparación de marcos más rápida",
+  "config.relativity.option.item_frame_extract_cache.description": "Los marcos que no cambian se saltan casi toda su preparación en cada fotograma.",
+  "config.relativity.empty": "Aún no hay optimizaciones",
+  "config.relativity.restart_required": "Reinicia el juego para aplicar los cambios.",
+  "config.relativity.save": "Guardar cambios",
+  "config.relativity.save.tooltip": "Hace permanentes los cambios.",
+  "config.relativity.done.tooltip": "Cierra los ajustes.",
+  "config.relativity.cancel.tooltip": "Descarta los cambios pendientes y cierra los ajustes.",
+  "config.relativity.reset.tooltip": "Restablece todas las opciones por defecto. (¡Se puede deshacer!)",
+  "config.relativity.undo": "Deshacer",
+  "config.relativity.undo.tooltip": "Devuelve todas las opciones a como estaban antes de editarlas."
+}

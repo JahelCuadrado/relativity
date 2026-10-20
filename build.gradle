@@ -1,0 +1,282 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+	id 'com.diffplug.spotless' version "${spotless_version}"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+	archivesName = project.archives_base_name
+}
+
+repositories {
+	maven {
+		name = 'TerraformersMC'
+		url = 'https://maven.terraformersmc.com/releases'
+		content { includeGroup 'com.terraformersmc' }
+	}
+}
+
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		"relativity" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = "relativity-gametest"
+		enableGameTests = true
+		enableClientGameTests = true
+		eula = true
+	}
+}
+
+// Client GameTests open a real game window: start it muted, small and capped at 30 FPS, so it
+// stays light while the machine is in use. The run directory is cleared before each run
+// (deleteGameTestRunDir), so the options are written right before launch.
+loom.runs.matching { it.name == "clientGameTest" }.configureEach {
+	programArgs "--width", "320", "--height", "240"
+}
+
+tasks.named("runClientGameTest") {
+	def optionsFile = file("build/run/clientGameTest/options.txt")
+	doFirst {
+		optionsFile.parentFile.mkdirs()
+		optionsFile.text = "soundCategory_master:0.0\nmaxFps:30\nrenderDistance:2\n"
+	}
+}
+
+// Client GameTests again with Sodium loaded (dev-only test run); see the file to remove it.
+apply from: "gradle/sodium-compat.gradle"
+
+// Dev-only reference benchmark (mod "relativity-benchmark"): its own source set, never packaged in
+// the published jar. ./gradlew runBenchmark -Pprofile=vanilla|pack -Psessions=N [-Ptoggle=<key>
+// -Ppairs=N]
+// -Ptoggle alternates that Relativity toggle off/on between scene rounds (A/B in one session) and
+// writes to build/benchmark/<profile>-ab-<key>.
+def benchmarkProfiles = ["vanilla", "pack"]
+def benchmarkProfile = providers.gradleProperty("profile").getOrElse("vanilla")
+if (!benchmarkProfiles.contains(benchmarkProfile)) {
+	throw new GradleException("-Pprofile must be one of ${benchmarkProfiles}, got '${benchmarkProfile}'")
+}
+def benchmarkSessions = providers.gradleProperty("sessions").getOrElse("1").toInteger()
+def benchmarkToggle = providers.gradleProperty("toggle").getOrElse("")
+if (!benchmarkToggle.isEmpty() && !(benchmarkToggle ==~ /[a-z0-9_]+/)) {
+	throw new GradleException("-Ptoggle must be a Relativity toggle key ([a-z0-9_]+), got '${benchmarkToggle}'")
+}
+def benchmarkPairs = providers.gradleProperty("pairs").getOrElse("3").toInteger()
+def benchmarkReportName = benchmarkToggle.isEmpty() ? benchmarkProfile : "${benchmarkProfile}-ab-${benchmarkToggle}"
+def benchmarkOutput = layout.buildDirectory.dir("benchmark/${benchmarkReportName}").get().asFile
+def benchmarkRunDirectory = file("run-benchmark/${benchmarkProfile}")
+def benchmarkPackMods = file("run-benchmark/pack-mods")
+
+sourceSets {
+	benchmark {
+		[sourceSets.main, sourceSets.client].each { dependency ->
+			compileClasspath += dependency.output
+			runtimeClasspath += dependency.output
+		}
+	}
+}
+
+configurations {
+	benchmarkCompileClasspath.extendsFrom clientCompileClasspath
+	benchmarkRuntimeClasspath.extendsFrom clientRuntimeClasspath
+}
+
+loom {
+	mods {
+		"relativity-benchmark" {
+			sourceSet sourceSets.benchmark
+		}
+	}
+
+	runs {
+		(1..benchmarkSessions).each { session ->
+			def sessionDirectory = new File(benchmarkOutput, "sessions/${session}")
+			"benchmarkSession${session}" {
+				client()
+				configName = "Benchmark session ${session}"
+				ideConfigGenerated = false
+				source sourceSets.benchmark
+				runDir = "run-benchmark/${benchmarkProfile}"
+				// Smallest 16:9 window Minecraft allows (minimum height 240): same framing as before.
+				programArgs "--width", "427", "--height", "240"
+				// Same collector and heap as the user's Prism instance.
+				vmArgs "-Xms2G", "-Xmx8G", "-XX:+UseZGC", "-XX:ZAllocationSpikeTolerance=5"
+				vmArgs "-Drelativity.benchmark.out=${sessionDirectory}",
+						"-Drelativity.benchmark.profile=${benchmarkProfile}",
+						"-Drelativity.benchmark.session=${session}",
+						"-XX:StartFlightRecording=name=relativity-startup,settings=profile,filename=${sessionDirectory}/startup.jfr"
+				if (benchmarkProfile == "pack") {
+					vmArgs "-Dfabric.addMods=${benchmarkPackMods}"
+				}
+				if (!benchmarkToggle.isEmpty()) {
+					vmArgs "-Drelativity.benchmark.toggle=${benchmarkToggle}",
+							"-Drelativity.benchmark.pairs=${benchmarkPairs}"
+				}
+			}
+		}
+	}
+}
+
+// Every benchmark client starts muted, at render distance 12 (startup, flight and exits; each scene
+// lowers it), without vsync and capped at 30 FPS: the main metric is CPU time per frame, which does
+// not depend on the cap, and the cap keeps the machine usable while the benchmark runs.
+def benchmarkOptions = """\
+soundCategory_master:0.0
+renderDistance:12
+enableVsync:false
+maxFps:30
+pauseOnLostFocus:false
+inactivityFpsLimit:"minimized"
+onboardAccessibility:false
+tutorialStep:none
+skipMultiplayerWarning:true
+joinedFirstServer:true
+realmsNotifications:false
+"""
+
+tasks.register("downloadBenchmarkPack", JavaExec) {
+	group = "benchmark"
+	description = "Downloads the pinned optimization pack of the 'pack' benchmark profile."
+	classpath = sourceSets.benchmark.runtimeClasspath
+	mainClass = "com.einsteinmods.relativity.benchmark.pack.PackDownloader"
+	args benchmarkPackMods.absolutePath
+}
+
+tasks.register("benchmarkReport", JavaExec) {
+	group = "benchmark"
+	description = "Aggregates benchmark sessions and their JFR recordings into report.json and summary.txt."
+	classpath = sourceSets.benchmark.runtimeClasspath
+	mainClass = "com.einsteinmods.relativity.benchmark.report.BenchmarkReport"
+	args benchmarkOutput.absolutePath, benchmarkProfile
+}
+
+tasks.register("candidateComparison", JavaExec) {
+	group = "benchmark"
+	description = "Puts the pack and vanilla reports' candidate costs side by side in build/benchmark/candidates.txt."
+	classpath = sourceSets.benchmark.runtimeClasspath
+	mainClass = "com.einsteinmods.relativity.benchmark.report.CandidateComparison"
+	args layout.buildDirectory.dir("benchmark").get().asFile.absolutePath
+}
+
+// On macOS the client runs at background priority (gradle/benchmark/background-java.sh wraps java
+// in taskpolicy -b), so the benchmark barely loads a machine someone keeps working on.
+def benchmarkJavaWrapper = file("gradle/benchmark/background-java.sh")
+def benchmarkBackground = new File("/usr/sbin/taskpolicy").canExecute()
+def benchmarkJava = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+		.map { it.executablePath.asFile.absolutePath }
+
+(1..benchmarkSessions).each { session ->
+	tasks.named("runBenchmarkSession${session}") {
+		def sessionDirectory = new File(benchmarkOutput, "sessions/${session}")
+		if (benchmarkBackground) {
+			executable = benchmarkJavaWrapper.absolutePath
+			// Loom would probe the wrapper's Java version to decide this; the toolchain is Java 25.
+			useArgFile = true
+			environment "RELATIVITY_BENCHMARK_JAVA", benchmarkJava.get()
+		}
+		def runDirectory = benchmarkRunDirectory
+		def options = benchmarkOptions
+		if (benchmarkProfile == "pack") {
+			dependsOn "downloadBenchmarkPack"
+		}
+		if (session > 1) {
+			mustRunAfter "runBenchmarkSession${session - 1}"
+		}
+		doFirst {
+			if (session == 1) {
+				new File(sessionDirectory.parentFile.parentFile, "sessions").deleteDir()
+			}
+			sessionDirectory.mkdirs()
+			runDirectory.mkdirs()
+			new File(runDirectory, "options.txt").text = options
+			new File(runDirectory, "saves/relativity-benchmark").deleteDir()
+		}
+	}
+}
+
+tasks.register("runBenchmark") {
+	group = "benchmark"
+	description = "Runs the reference benchmark (-Pprofile=vanilla|pack, -Psessions=N) and writes its report."
+	dependsOn((1..benchmarkSessions).collect { "runBenchmarkSession${it}" })
+	finalizedBy "benchmarkReport"
+}
+
+// The benchmark never runs during build, but it must keep compiling under -Werror.
+tasks.named("check") {
+	dependsOn "benchmarkClasses"
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// Optional at runtime ("recommends" in fabric.mod.json): "Configure" button in the mod list.
+	clientCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
+	localRuntime "com.terraformersmc:modmenu:${project.modmenu_version}"
+
+	testImplementation "net.fabricmc:fabric-loader-junit:${project.loader_version}"
+	testImplementation platform("org.junit:junit-bom:${project.junit_version}")
+	testImplementation "org.junit.jupiter:junit-jupiter"
+	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(25)
+	}
+	withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.release = 25
+	options.encoding = "UTF-8"
+	// Line numbers stay for crash reports; local variable tables only serve debuggers and cost
+	// about 18 KB of the jar budget.
+	options.debugOptions.debugLevel = "source,lines"
+	options.compilerArgs.addAll(["-Xlint:all,-processing,-classfile,-serial", "-Werror"])
+}
+
+test {
+	useJUnitPlatform()
+}
+
+jar {
+	def projectName = project.name
+	inputs.property "projectName", projectName
+
+	from("LICENSE") {
+		rename { "${it}_$projectName" }
+	}
+}
+
+spotless {
+	java {
+		target "src/*/java/**/*.java"
+		// 1.36.1: newest version compatible with Spotless 8.10.4 (1.37.0 fails with NoSuchMethodError).
+		googleJavaFormat("1.36.1")
+		removeUnusedImports()
+		trimTrailingWhitespace()
+		endWithNewline()
+	}
+}
